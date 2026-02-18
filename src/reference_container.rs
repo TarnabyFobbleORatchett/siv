@@ -27,13 +27,19 @@ impl<T> ReferenceContainer<T> {
         }
     }
 
+    /// Retrieves a reference to the value associated with the given index. Returns
+    /// `Some(&T)` if the index is valid, or `None` if the index is out of bounds.
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.data.get(index)
+    }
+
     /// Finds the value associated with the given id and returns a reference
     /// to it. Returns `None` if the id is not found in the container.
     ///
     /// The method works by first searching for the index of the provided id
     /// in the 'id' vector, and then using that index to retrieve the
     /// corresponding value from the 'data' vector.
-    pub fn get(&self, id: usize) -> Option<&T> {
+    pub fn get_from_id(&self, id: usize) -> Option<&T> {
         self.id
             .iter()
             .position(|&x| x == id)
@@ -95,6 +101,25 @@ impl<T> ReferenceContainer<T> {
         } else {
             Err("ID not found in the container")
         }
+    }
+
+    pub fn remove_by_reference(&mut self, reference: usize) -> Result<(), &'static str> {
+        let mut indices_to_remove = Vec::new();
+        for (i, &ref_value) in self.reference.iter().enumerate() {
+            if ref_value == reference {
+                indices_to_remove.push(i);
+            }
+        }
+
+        if indices_to_remove.is_empty() {
+            return Err("Reference not found in the container");
+        }
+
+        for index in indices_to_remove.into_iter().rev() {
+            self.remove(self.id[index])?;
+        }
+
+        Ok(())
     }
 
     /// Adds a new element to the container and returns a reference to its
@@ -238,10 +263,10 @@ mod tests {
     #[test]
     fn test_get() {
         let container = setup_container();
-        assert_eq!(container.get(0), Some(&"a".to_string()));
-        assert_eq!(container.get(1), Some(&"b".to_string()));
-        assert_eq!(container.get(2), Some(&"c".to_string()));
-        assert_eq!(container.get(3), None);
+        assert_eq!(container.get_from_id(0), Some(&"a".to_string()));
+        assert_eq!(container.get_from_id(1), Some(&"b".to_string()));
+        assert_eq!(container.get_from_id(2), Some(&"c".to_string()));
+        assert_eq!(container.get_from_id(3), None);
     }
 
     /// Tests the 'update' method of the Container struct to ensure it
@@ -252,7 +277,7 @@ mod tests {
     fn test_update() {
         let mut container = setup_container();
         assert_eq!(container.update(1, "updated".to_string()), Ok(()));
-        assert_eq!(container.get(1), Some(&"updated".to_string()));
+        assert_eq!(container.get_from_id(1), Some(&"updated".to_string()));
         assert_eq!(
             container.update(3, "new".to_string()),
             Err("ID not found in the container")
@@ -284,7 +309,7 @@ mod tests {
     fn test_remove() {
         let mut container = setup_container();
         assert_eq!(container.remove(2), Ok(()));
-        assert_eq!(container.get(2), None);
+        assert_eq!(container.get_from_id(2), None);
         assert_eq!(container.remove(3), Err("ID not found in the container"));
     }
 
@@ -296,10 +321,10 @@ mod tests {
     fn test_add() {
         let mut container = setup_container();
         let new_id = container.add("d".to_string(), 5);
-        assert_eq!(container.get(new_id), Some(&"d".to_string()));
+        assert_eq!(container.get_from_id(new_id), Some(&"d".to_string()));
         container.remove(1).unwrap();
         let new_id2 = container.add("e".to_string(), 6);
-        assert_eq!(container.get(new_id2), Some(&"e".to_string()));
+        assert_eq!(container.get_from_id(new_id2), Some(&"e".to_string()));
     }
 
     /// Tests the 'size' and 'empty' methods of the Container struct to ensure
@@ -325,9 +350,9 @@ mod tests {
 
         container.sort();
 
-        assert_eq!(container.get(1), Some(&"b".to_string()));
-        assert_eq!(container.get(2), Some(&"c".to_string()));
-        assert_eq!(container.get(0), Some(&"a".to_string()));
+        assert_eq!(container.get_from_id(1), Some(&"b".to_string()));
+        assert_eq!(container.get_from_id(2), Some(&"c".to_string()));
+        assert_eq!(container.get_from_id(0), Some(&"a".to_string()));
 
         assert_eq!(container.get_ids_from_reference(0), Some(vec![1]));
         assert_eq!(container.get_ids_from_reference(1), Some(vec![2]));
