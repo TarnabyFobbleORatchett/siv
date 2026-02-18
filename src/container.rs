@@ -1,3 +1,4 @@
+#[derive(Default, Debug)]
 pub struct Container<T> {
     data_index: Vec<usize>,
     id: Vec<usize>,
@@ -14,7 +15,15 @@ impl<T: Clone> Clone for Container<T> {
     }
 }
 
-impl<T: Clone> Container<T> {
+impl<T> Container<T> {
+    pub fn new() -> Self {
+        Container {
+            data_index: Vec::new(),
+            id: Vec::new(),
+            data: Vec::new(),
+        }
+    }
+
     /// Finds the value associated with the given id and returns a reference
     /// to it. Returns `None` if the id is not found in the container.
     ///
@@ -45,10 +54,10 @@ impl<T: Clone> Container<T> {
     }
 
     /// Retrieves the id associated with the given index. Returns
-    /// `Ok(&usize)' if the index is valid, or an error message if the index
+    /// `Ok(usize)' if the index is valid, or an error message if the index
     /// is out of bounds.
-    pub fn get_id_from_index(&self, index: usize) -> Result<&usize, &'static str> {
-        self.id.get(index).ok_or("Index out of bounds")
+    pub fn get_id_from_index(&self, index: usize) -> Result<usize, &'static str> {
+        self.id.get(index).copied().ok_or("Index out of bounds")
     }
 
     /// Finds the value associated with the given id and swaps it with the
@@ -76,7 +85,7 @@ impl<T: Clone> Container<T> {
     /// and 'data_index' vectors accordingly. The method ensures that the
     /// new element is properly indexed and can be retrieved using its id in
     /// the future.
-    pub fn add(&mut self, data: T) -> &usize {
+    pub fn add(&mut self, data: T) -> usize {
         let index = self.data.len();
         if self.data.len() < self.id.len() {
             self.data.push(data);
@@ -85,7 +94,7 @@ impl<T: Clone> Container<T> {
             self.id.push(index);
             self.data_index.push(index);
         }
-        self.id.get(index).expect("This should never fail")
+        self.id.get(index).copied().expect("This should never fail")
     }
 
     /// Swaps the elements at the specified indices in the container. This
@@ -97,8 +106,8 @@ impl<T: Clone> Container<T> {
         self.data.swap(index_a, index_b);
         self.id.swap(index_a, index_b);
 
-        let data_index_a = *self.get_id_from_index(index_a)?;
-        let data_index_b = *self.get_id_from_index(index_b)?;
+        let data_index_a = self.get_id_from_index(index_a)?;
+        let data_index_b = self.get_id_from_index(index_b)?;
 
         self.data_index.swap(data_index_a, data_index_b);
 
@@ -210,10 +219,10 @@ mod tests {
     #[test]
     fn test_add() {
         let mut container = setup_container();
-        let new_id = *container.add("d".to_string());
+        let new_id = container.add("d".to_string());
         assert_eq!(container.get(new_id), Some(&"d".to_string()));
         container.remove(1).unwrap();
-        let new_id2 = *container.add("e".to_string());
+        let new_id2 = container.add("e".to_string());
         assert_eq!(container.get(new_id2), Some(&"e".to_string()));
     }
 

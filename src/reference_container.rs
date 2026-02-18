@@ -1,3 +1,4 @@
+#[derive(Default, Debug)]
 pub struct ReferenceContainer<T> {
     data_index: Vec<usize>,
     id: Vec<usize>,
@@ -16,7 +17,16 @@ impl<T: Clone> Clone for ReferenceContainer<T> {
     }
 }
 
-impl<T: Clone> ReferenceContainer<T> {
+impl<T> ReferenceContainer<T> {
+    pub fn new() -> Self {
+        ReferenceContainer {
+            data_index: Vec::new(),
+            id: Vec::new(),
+            data: Vec::new(),
+            reference: Vec::new(),
+        }
+    }
+
     /// Finds the value associated with the given id and returns a reference
     /// to it. Returns `None` if the id is not found in the container.
     ///
@@ -47,22 +57,22 @@ impl<T: Clone> ReferenceContainer<T> {
     }
 
     /// Retrieves the id associated with the given index. Returns
-    /// `Ok(&usize)' if the index is valid, or an error message if the index
+    /// `Ok(usize)' if the index is valid, or an error message if the index
     /// is out of bounds.
-    pub fn get_id_from_index(&self, index: usize) -> Result<&usize, &'static str> {
-        self.id.get(index).ok_or("Index out of bounds")
+    pub fn get_id_from_index(&self, index: usize) -> Result<usize, &'static str> {
+        self.id.get(index).copied().ok_or("Index out of bounds")
     }
 
     /// Retrieves the all ids on the same index as the given reference. Returns
     /// Some vector of references if the reference is valid, or None if the
     /// reference is not found in the container.
-    pub fn get_ids_from_reference(&self, reference: usize) -> Option<Vec<&usize>> {
+    pub fn get_ids_from_reference(&self, reference: usize) -> Option<Vec<usize>> {
         let mut ids = Vec::new();
         for (i, &ref_value) in self.reference.iter().enumerate() {
             if ref_value == reference
                 && let Some(id) = self.id.get(i)
             {
-                ids.push(id);
+                ids.push(*id);
             }
         }
         if ids.is_empty() { None } else { Some(ids) }
@@ -94,7 +104,7 @@ impl<T: Clone> ReferenceContainer<T> {
     /// and 'data_index' vectors accordingly. The method ensures that the
     /// new element is properly indexed and can be retrieved using its id in
     /// the future.
-    pub fn add(&mut self, data: T, reference: usize) -> &usize {
+    pub fn add(&mut self, data: T, reference: usize) -> usize {
         let index = self.data.len();
         if self.data.len() < self.id.len() {
             self.data.push(data);
@@ -105,34 +115,7 @@ impl<T: Clone> ReferenceContainer<T> {
             self.data_index.push(index);
             self.reference.push(reference);
         }
-        self.id.get(index).expect("This should never fail")
-    }
-
-    /// Sorts the elements in the container based on their reference values. The
-    /// method should rearrange the elements in the 'data', 'id', 'data_index',
-    /// and 'reference' vectors to maintain the correct associations between
-    /// ids, data, and references after sorting. The sorting can be done using
-    /// any sorting algorithm, but it should ensure that the integrity of the
-    /// container is maintained and that the elements are correctly ordered
-    /// based on their reference values.
-    pub fn sort(&mut self) {
-        let mut combined: Vec<(usize, usize, T, usize)> = Vec::new();
-        for i in 0..self.id.len() {
-            if let (Some(id), Some(data), Some(reference)) =
-                (self.id.get(i), self.data.get(i), self.reference.get(i))
-            {
-                combined.push((*id, i, data.clone(), *reference));
-            }
-        }
-
-        combined.sort_by_key(|k| k.3);
-
-        for (new_index, (id, _old_index, data, reference)) in combined.into_iter().enumerate() {
-            self.id[new_index] = id;
-            self.data[new_index] = data;
-            self.reference[new_index] = reference;
-            self.data_index[id] = new_index;
-        }
+        self.id.get(index).copied().expect("This should never fail")
     }
 
     /// Swaps the elements at the specified indices in the container. This
@@ -145,8 +128,8 @@ impl<T: Clone> ReferenceContainer<T> {
         self.id.swap(index_a, index_b);
         self.reference.swap(index_a, index_b);
 
-        let data_index_a = *self.get_id_from_index(index_a)?;
-        let data_index_b = *self.get_id_from_index(index_b)?;
+        let data_index_a = self.get_id_from_index(index_a)?;
+        let data_index_b = self.get_id_from_index(index_b)?;
 
         self.data_index.swap(data_index_a, data_index_b);
 
@@ -175,6 +158,35 @@ impl<T: Clone> ReferenceContainer<T> {
         self.id.clear();
         self.data_index.clear();
         self.reference.clear();
+    }
+}
+
+impl<T: Clone> ReferenceContainer<T> {
+    /// Sorts the elements in the container based on their reference values. The
+    /// method should rearrange the elements in the 'data', 'id', 'data_index',
+    /// and 'reference' vectors to maintain the correct associations between
+    /// ids, data, and references after sorting. The sorting can be done using
+    /// any sorting algorithm, but it should ensure that the integrity of the
+    /// container is maintained and that the elements are correctly ordered
+    /// based on their reference values.
+    pub fn sort(&mut self) {
+        let mut combined: Vec<(usize, usize, T, usize)> = Vec::new();
+        for i in 0..self.id.len() {
+            if let (Some(id), Some(data), Some(reference)) =
+                (self.id.get(i), self.data.get(i), self.reference.get(i))
+            {
+                combined.push((*id, i, data.clone(), *reference));
+            }
+        }
+
+        combined.sort_by_key(|k| k.3);
+
+        for (new_index, (id, _old_index, data, reference)) in combined.into_iter().enumerate() {
+            self.id[new_index] = id;
+            self.data[new_index] = data;
+            self.reference[new_index] = reference;
+            self.data_index[id] = new_index;
+        }
     }
 }
 
@@ -258,10 +270,10 @@ mod tests {
     #[test]
     fn test_reference_methods() {
         let container = setup_container();
-        assert_eq!(container.get_id_from_index(1), Ok(&1));
+        assert_eq!(container.get_id_from_index(1), Ok(1));
         assert_eq!(container.get_id_from_index(3), Err("Index out of bounds"));
-        assert_eq!(container.get_ids_from_reference(1), Some(vec![&1, &2]));
-        assert_eq!(container.get_ids_from_reference(0), Some(vec![&0]));
+        assert_eq!(container.get_ids_from_reference(1), Some(vec![1, 2]));
+        assert_eq!(container.get_ids_from_reference(0), Some(vec![0]));
         assert_eq!(container.get_ids_from_reference(2), None);
     }
 
@@ -283,10 +295,10 @@ mod tests {
     #[test]
     fn test_add() {
         let mut container = setup_container();
-        let new_id = *container.add("d".to_string(), 5);
+        let new_id = container.add("d".to_string(), 5);
         assert_eq!(container.get(new_id), Some(&"d".to_string()));
         container.remove(1).unwrap();
-        let new_id2 = *container.add("e".to_string(), 6);
+        let new_id2 = container.add("e".to_string(), 6);
         assert_eq!(container.get(new_id2), Some(&"e".to_string()));
     }
 
@@ -317,8 +329,8 @@ mod tests {
         assert_eq!(container.get(2), Some(&"c".to_string()));
         assert_eq!(container.get(0), Some(&"a".to_string()));
 
-        assert_eq!(container.get_ids_from_reference(0), Some(vec![&1]));
-        assert_eq!(container.get_ids_from_reference(1), Some(vec![&2]));
-        assert_eq!(container.get_ids_from_reference(2), Some(vec![&0]));
+        assert_eq!(container.get_ids_from_reference(0), Some(vec![1]));
+        assert_eq!(container.get_ids_from_reference(1), Some(vec![2]));
+        assert_eq!(container.get_ids_from_reference(2), Some(vec![0]));
     }
 }
