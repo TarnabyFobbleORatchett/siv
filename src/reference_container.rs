@@ -201,6 +201,25 @@ mod tests {
         }
     }
 
+    /// Tests the 'clone' method of the Container struct to ensure it creates a
+    /// new instance of the container with the same data, id, data_index, and
+    /// reference values as the original container. This test checks that the
+    /// cloned container is identical to the original container in terms of its
+    /// contents and structure, confirming that the cloning process is
+    /// functioning correctly. It verifies that all the fields of the cloned
+    /// container match those of the original container, ensuring that the clone
+    /// is a true copy of the original. This test is crucial for validating the
+    /// correctness of the Clone implementation for the Container struct.
+    #[test]
+    fn test_clone() {
+        let container = setup_container();
+        let cloned_container = container.clone();
+        assert_eq!(container.data, cloned_container.data);
+        assert_eq!(container.id, cloned_container.id);
+        assert_eq!(container.data_index, cloned_container.data_index);
+        assert_eq!(container.reference, cloned_container.reference);
+    }
+
     /// Tests the 'get' method of the Container struct to ensure it
     /// correctly retrieves values based on their associated ids and returns
     /// `None` for ids that are not present in the container.

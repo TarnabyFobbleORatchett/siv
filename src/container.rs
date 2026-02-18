@@ -4,7 +4,17 @@ pub struct Container<T> {
     data: Vec<T>,
 }
 
-impl<T> Container<T> {
+impl<T: Clone> Clone for Container<T> {
+    fn clone(&self) -> Self {
+        Container {
+            data_index: self.data_index.clone(),
+            id: self.id.clone(),
+            data: self.data.clone(),
+        }
+    }
+}
+
+impl<T: Clone> Container<T> {
     /// Finds the value associated with the given id and returns a reference
     /// to it. Returns `None` if the id is not found in the container.
     ///
@@ -130,6 +140,24 @@ mod tests {
             id: vec![0, 1, 2],
             data: vec!["a".to_string(), "b".to_string(), "c".to_string()],
         }
+    }
+
+    /// Tests the 'clone' method of the Container struct to ensure it creates a
+    /// new instance of the container with the same data, id, data_index, and
+    /// reference values as the original container. This test checks that the
+    /// cloned container is identical to the original container in terms of its
+    /// contents and structure, confirming that the cloning process is
+    /// functioning correctly. It verifies that all the fields of the cloned
+    /// container match those of the original container, ensuring that the clone
+    /// is a true copy of the original. This test is crucial for validating the
+    /// correctness of the Clone implementation for the Container struct.
+    #[test]
+    fn test_clone() {
+        let container = setup_container();
+        let cloned_container = container.clone();
+        assert_eq!(container.data, cloned_container.data);
+        assert_eq!(container.id, cloned_container.id);
+        assert_eq!(container.data_index, cloned_container.data_index);
     }
 
     /// Tests the 'get' method of the Container struct to ensure it
