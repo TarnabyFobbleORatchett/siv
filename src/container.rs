@@ -49,13 +49,7 @@ impl<T> Container<T> {
         if let Some(index) = self.id.iter().position(|&x| x == id) {
             let last_index = self.data.len() - 1;
 
-            self.data.swap(index, last_index);
-            self.id.swap(index, last_index);
-
-            let data_index_a = *self.get_id_from_index(index)?;
-            let data_index_b = *self.get_id_from_index(last_index)?;
-
-            self.data_index.swap(data_index_a, data_index_b);
+            self.swap(index, last_index)?;
 
             self.data.pop();
 
@@ -82,6 +76,23 @@ impl<T> Container<T> {
             self.data_index.push(index);
         }
         self.id.get(index).expect("This should never fail")
+    }
+
+    /// Swaps the elements at the specified indices in the container. This
+    /// method keeps the integrity of the container by ensuring that the
+    /// corresponding elements in the 'data', 'id', and
+    /// 'reference' vectors are swapped together. It also updates the
+    /// 'data_index' vector to reflect the new positions of the swapped elements.
+    fn swap(&mut self, index_a: usize, index_b: usize) -> Result<(), &'static str> {
+        self.data.swap(index_a, index_b);
+        self.id.swap(index_a, index_b);
+
+        let data_index_a = *self.get_id_from_index(index_a)?;
+        let data_index_b = *self.get_id_from_index(index_b)?;
+
+        self.data_index.swap(data_index_a, data_index_b);
+
+        Ok(())
     }
 
     /// Returns the number of elements currently stored in the container by

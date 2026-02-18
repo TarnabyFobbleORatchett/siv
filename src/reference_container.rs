@@ -5,7 +5,18 @@ pub struct ReferenceContainer<T> {
     reference: Vec<usize>,
 }
 
-impl<T> ReferenceContainer<T> {
+impl<T: Clone> Clone for ReferenceContainer<T> {
+    fn clone(&self) -> Self {
+        ReferenceContainer {
+            data_index: self.data_index.clone(),
+            id: self.id.clone(),
+            data: self.data.clone(),
+            reference: self.reference.clone(),
+        }
+    }
+}
+
+impl<T: Clone> ReferenceContainer<T> {
     /// Finds the value associated with the given id and returns a reference
     /// to it. Returns `None` if the id is not found in the container.
     ///
@@ -65,14 +76,7 @@ impl<T> ReferenceContainer<T> {
         if let Some(index) = self.id.iter().position(|&x| x == id) {
             let last_index = self.data.len() - 1;
 
-            self.data.swap(index, last_index);
-            self.id.swap(index, last_index);
-            self.reference.swap(index, last_index);
-
-            let data_index_a = *self.get_id_from_index(index)?;
-            let data_index_b = *self.get_id_from_index(last_index)?;
-
-            self.data_index.swap(data_index_a, data_index_b);
+            self.swap(index, last_index)?;
 
             self.data.pop();
             self.reference.pop();
@@ -102,6 +106,51 @@ impl<T> ReferenceContainer<T> {
             self.reference.push(reference);
         }
         self.id.get(index).expect("This should never fail")
+    }
+
+    /// Sorts the elements in the container based on their reference values. The
+    /// method should rearrange the elements in the 'data', 'id', 'data_index',
+    /// and 'reference' vectors to maintain the correct associations between
+    /// ids, data, and references after sorting. The sorting can be done using
+    /// any sorting algorithm, but it should ensure that the integrity of the
+    /// container is maintained and that the elements are correctly ordered
+    /// based on their reference values.
+    pub fn sort(&mut self) {
+        let mut combined: Vec<(usize, usize, T, usize)> = Vec::new();
+        for i in 0..self.id.len() {
+            if let (Some(id), Some(data), Some(reference)) =
+                (self.id.get(i), self.data.get(i), self.reference.get(i))
+            {
+                combined.push((*id, i, data.clone(), *reference));
+            }
+        }
+
+        combined.sort_by_key(|k| k.3);
+
+        for (new_index, (id, _old_index, data, reference)) in combined.into_iter().enumerate() {
+            self.id[new_index] = id;
+            self.data[new_index] = data;
+            self.reference[new_index] = reference;
+            self.data_index[id] = new_index;
+        }
+    }
+
+    /// Swaps the elements at the specified indices in the container. This
+    /// method keeps the integrity of the container by ensuring that the
+    /// corresponding elements in the 'data', 'id', and
+    /// 'reference' vectors are swapped together. It also updates the
+    /// 'data_index' vector to reflect the new positions of the swapped elements.
+    fn swap(&mut self, index_a: usize, index_b: usize) -> Result<(), &'static str> {
+        self.data.swap(index_a, index_b);
+        self.id.swap(index_a, index_b);
+        self.reference.swap(index_a, index_b);
+
+        let data_index_a = *self.get_id_from_index(index_a)?;
+        let data_index_b = *self.get_id_from_index(index_b)?;
+
+        self.data_index.swap(data_index_a, data_index_b);
+
+        Ok(())
     }
 
     /// Returns the number of elements currently stored in the container by
@@ -143,6 +192,15 @@ mod tests {
         }
     }
 
+    fn setup_unsorted_container() -> ReferenceContainer<String> {
+        ReferenceContainer {
+            data_index: vec![0, 1, 2],
+            id: vec![0, 1, 2],
+            data: vec!["a".to_string(), "b".to_string(), "c".to_string()],
+            reference: vec![2, 0, 1],
+        }
+    }
+
     /// Tests the 'get' method of the Container struct to ensure it
     /// correctly retrieves values based on their associated ids and returns
     /// `None` for ids that are not present in the container.
@@ -175,7 +233,7 @@ mod tests {
         );
     }
 
-    /// Tests the refernce related methods of the Container struct to ensure it
+    /// Tests the reference related methods of the Container struct to ensure it
     /// correctly retrieves ids based on their associated reference and returns
     /// `None` for references that are not present in the container.
     #[test]
@@ -223,5 +281,25 @@ mod tests {
         container.clear();
         assert_eq!(container.size(), 0);
         assert!(container.empty());
+    }
+
+    /// Test the sort method of the Container struct to ensure it correctly
+    /// sorts the elements based on their reference values and maintains the
+    /// integrity of the container. This test will check that after sorting, the
+    /// elements are in the expected order based on their reference values and
+    /// that the associations between ids, data, and references are preserved.
+    #[test]
+    fn test_sort() {
+        let mut container = setup_unsorted_container();
+
+        container.sort();
+
+        assert_eq!(container.get(1), Some(&"b".to_string()));
+        assert_eq!(container.get(2), Some(&"c".to_string()));
+        assert_eq!(container.get(0), Some(&"a".to_string()));
+
+        assert_eq!(container.get_ids_from_reference(0), Some(vec![&1]));
+        assert_eq!(container.get_ids_from_reference(1), Some(vec![&2]));
+        assert_eq!(container.get_ids_from_reference(2), Some(vec![&0]));
     }
 }
